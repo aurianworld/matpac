@@ -1,0 +1,23 @@
+name: matpac
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.18
+  - h5py=3.9.0
+  - hdf5=1.14.2
+  - numpy=1.26.0
+  - pandas=2.1.1
+  - pip=23.2.1
+  - sox=14.4.2
+  - pip:
+      - einops==0.7.0
+      - pyyaml==6.0.1
+      - npy-append-array==0.9.16
+      - sox==1.4.1
+      - tensorboardx==2.6.2.2
+      - timm==0.4.12
+      - torch==2.4.1
+      - torchaudio==2.4.1
+      - torchvision==0.19.1
+      - soundfile==0.12.1 

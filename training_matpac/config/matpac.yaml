@@ -1,0 +1,93 @@
+checkpoint:
+  no_epoch_checkpoints: true
+  save_interval: 15
+  save_dir: ./checkpoint
+  save_interval_updates: 25000
+common:
+  fp16: true
+  log_format: json
+  log_interval: 200
+  seed: 1337
+  tensorboard_logdir: tblog
+  user_dir: ./training_matpac
+criterion:
+  _name: model
+  log_keys:
+  - ema_decay
+  - ema_norm
+  - t_temp
+  - loss_pred
+  - loss_cls
+  - var_z_hat_m
+  - var_z_m
+  - var_p_m
+  - var_p_hat_m
+  - var_idx_targ
+  - var_idx_pred
+  - n_diff_target
+  - count
+  - correct
+  - cls_perplexity
+  loss_weights:
+    loss_cls: 0.5
+    loss_pred: 0.5
+    
+dataset:
+  batch_size: 256
+  disable_validation: true
+  num_workers: 8
+  skip_invalid_size_inputs_valid_test: true
+  validate_interval: 5
+  validate_interval_updates: 25000
+
+
+distributed_training:
+  ddp_backend: legacy_ddp
+  distributed_port: 25050
+  distributed_world_size: 8
+hydra:
+  job:
+    config:
+      override_dirname:
+        exclude_keys:
+        - run
+        - task.data
+        item_sep: __
+        kv_sep: '-'
+  run:
+    dir: ./exp_run
+  sweep:
+    dir: ./exp_run
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
+lr_scheduler:
+  _name: cosine
+  warmup_updates: 19654
+model:
+  _name: matpac
+  encoder:
+    embed_dim: 768
+  decoder:
+    embed_dim: ${model.encoder.embed_dim}
+  n_freq: 80 
+  n_t : ${task.max_sample_size} 
+  alpha : 0.5
+  cls_head_cfg:
+    head_dim_out: 2048
+    hidden_dim: 2048
+    ema_decay: 0.998
+    warmup_n_steps: 9827
+optimization:
+  clip_norm: 3.0
+  lr:
+  - 0.0003
+  max_update: 294816
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.95)
+  adam_eps: 1e-06
+  weight_decay: 0.05
+task:
+  _name: logmel_pretraining
+  data: /home/auquelennec/Bureau/manifest_lms
+  max_sample_size: 608
+  min_sample_size: 608
