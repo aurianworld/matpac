@@ -40,14 +40,12 @@ MATPAC outperforms other self-supervised baselines on datasets such as OpenMIC, 
 
 If you use this work, please cite:
 ```bibtex
-@INPROCEEDINGS{10887666,
+@inproceedings{quelennec2025matpac,
+  title={Masked Latent Prediction and Classification for Self-Supervised Audio Representation Learning}, 
   author={Quelennec, Aurian and Chouteau, Pierre and Peeters, Geoffroy and Essid, Slim},
   booktitle={ICASSP 2025 - 2025 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
-  title={Masked Latent Prediction and Classification for Self-Supervised Audio Representation Learning}, 
   year={2025},
-  volume={},
-  number={},
-  pages={1-5},
+  url={https://ieeexplore.ieee.org/document/10887666},
   doi={10.1109/ICASSP49660.2025.10887666}}
 ```
 
@@ -59,38 +57,21 @@ If you use this work, please cite:
 - [M2D](https://github.com/nttcslab/m2d/tree/master) for the base of the code.
 - [DINO](https://github.com/facebookresearch/dino) for the classification head.
 
-```
-@inproceedings{M2D,
-  author       = {Daisuke Niizumi and
-                  Daiki Takeuchi and
-                  Yasunori Ohishi and
-                  Noboru Harada and
-                  Kunio Kashino},
-  title        = {Masked Modeling Duo: Learning Representations by Encouraging Both
-                  Networks to Model the Input},
-  booktitle    = {{IEEE} International Conference on Acoustics, Speech and Signal Processing
-                  {ICASSP} 2023, Rhodes Island, Greece, June 4-10, 2023},
-  pages        = {1--5},
-  publisher    = {{IEEE}},
-  year         = {2023},
-  doi          = {10.1109/ICASSP49357.2023.10097236},
-}
+```bibtex
+@inproceedings{niizumi2023m2d,
+    title={{Masked Modeling Duo: Learning Representations by Encouraging Both Networks to Model the Input}},
+    author={Daisuke Niizumi and Daiki Takeuchi and Yasunori Ohishi and Noboru Harada and Kunio Kashino},
+    booktitle={ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
+    year={2023},
+    url={https://ieeexplore.ieee.org/document/10097236},
+    doi={10.1109/ICASSP49357.2023.10097236}}
+
 
 @inproceedings{DINO,
-  author       = {Mathilde Caron and
-                  Hugo Touvron and
-                  Ishan Misra and
-                  Herv{\'{e}} J{\'{e}}gou and
-                  Julien Mairal and
-                  Piotr Bojanowski and
-                  Armand Joulin},
-  title        = {Emerging Properties in Self-Supervised Vision Transformers},
-  booktitle    = {2021 {IEEE/CVF} International Conference on Computer Vision, {ICCV}
-                  2021, Montreal, QC, Canada, October 10-17, 2021},
-  pages        = {9630--9640},
-  publisher    = {{IEEE}},
-  year         = {2021},
-  doi          = {10.1109/ICCV48922.2021.00951},
-}
-
+  title={Emerging Properties in Self-Supervised Vision Transformers}, 
+  author={Caron, Mathilde and Touvron, Hugo and Misra, Ishan and Jegou, Hervé and Mairal, Julien and Bojanowski, Piotr and Joulin, Armand},
+  booktitle={2021 IEEE/CVF International Conference on Computer Vision (ICCV)}, 
+  year={2021},
+  url={https://ieeexplore.ieee.org/document/9709990},
+  doi={10.1109/ICCV48922.2021.00951}}
 ```
