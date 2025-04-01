@@ -70,9 +70,9 @@ python $FAIRSEQ/fairseq_cli/hydra_train.py -m --config-dir /path/to/matpac/train
 
 ## Configuration insights
 
-The config file [matpac.yaml](./config/matpac.yaml) has all the same hyperparameters as the best model of paper. However when training, we used a version of AudioSet where we had `2012615` samples above 6s.
+The config file [matpac.yaml](./config/matpac.yaml) has all the same hyperparameters as the best model of the paper. For pre-training, we used a version of AudioSet where we had `2012615` samples above 6s.
 
-As we presented several hyperparameters in epochs in our paper that are counted in steps in the config file, you will have to re-calculate their values in regards of your number of samples and your batch size.
+We presented several hyperparameters in epochs in our paper that are counted in steps in the config file. Therefore, you will have to re-calculate their values in regards of your number of training samples and your batch size.
 
 The affected parameters are:
 
