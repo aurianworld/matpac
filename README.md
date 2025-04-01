@@ -1,8 +1,8 @@
 # MATPAC: Masked latent Prediction And Classification
 
-**tl;dr**: MATPAC is powerful general audio fundation model.
+**tl;dr**: MATPAC is powerful general audio foundation model.
 
-This repository provides the training code, in fairseq framework, as well as an easy to use inference code from our paper [📝 Masked Latent Prediction and Classification for Self-Supervised Audio Representation Learning](https://ieeexplore.ieee.org/document/10887666)
+This repository provides the training code, in the fairseq framework, as well as an easy to use inference code from our paper [📝 Masked Latent Prediction and Classification for Self-Supervised Audio Representation Learning](https://ieeexplore.ieee.org/document/10887666)
 
 ![MATPAC](./assets/MATPAC.png)
 
