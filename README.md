@@ -18,7 +18,7 @@ This repository provides the training code, in fairseq framework, as well as an 
 ## Inference code
 
 The package [inference_matpac](./inference_matpac/) enables you to easily pip install the inference code to use MATPAC as a feature extractor from audio files.
-You can find the model weights [here](https://github.com/aurianworld/matpac/releases/download/Initial_release/matpac_10_2048.pt)
+You can find the model weights [here](https://github.com/aurianworld/matpac/releases/download/Initial_release/matpac_10_2048.pt).
 
 ```bash
 pip install -e ./inference_matpac 
