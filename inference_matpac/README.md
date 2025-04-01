@@ -14,7 +14,7 @@ pip install -e .
 
 ## Usage 
 
-Download the model weights and save them under `ckpt_path` on your computer.
+Download the model [weights](https://github.com/aurianworld/matpac/releases/download/Initial_release/matpac_10_2048.pt) and save them under `ckpt_path` on your computer.
 
 ### Basic Usage
 
