@@ -60,14 +60,14 @@ If you use this work, please cite:
 ```bibtex
 @inproceedings{niizumi2023m2d,
     title={{Masked Modeling Duo: Learning Representations by Encouraging Both Networks to Model the Input}},
-    author={Daisuke Niizumi and Daiki Takeuchi and Yasunori Ohishi and Noboru Harada and Kunio Kashino},
+    author={Niizumi, Daisuke and Takeuchi, Daiki and Ohishi, Yasunori and Harada, Noboru and Kashino, Kunio},
     booktitle={ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
     year={2023},
     url={https://ieeexplore.ieee.org/document/10097236},
     doi={10.1109/ICASSP49357.2023.10097236}}
 
 
-@inproceedings{DINO,
+@inproceedings{caron2021dino,
   title={Emerging Properties in Self-Supervised Vision Transformers}, 
   author={Caron, Mathilde and Touvron, Hugo and Misra, Ishan and Jegou, Hervé and Mairal, Julien and Bojanowski, Piotr and Joulin, Armand},
   booktitle={2021 IEEE/CVF International Conference on Computer Vision (ICCV)}, 
