@@ -60,12 +60,12 @@ If you use this work, please cite:
 
 ```bibtex
 @inproceedings{niizumi2023m2d,
-    title={{Masked Modeling Duo: Learning Representations by Encouraging Both Networks to Model the Input}},
-    author={Niizumi, Daisuke and Takeuchi, Daiki and Ohishi, Yasunori and Harada, Noboru and Kashino, Kunio},
-    booktitle={ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
-    year={2023},
-    url={https://ieeexplore.ieee.org/document/10097236},
-    doi={10.1109/ICASSP49357.2023.10097236}}
+  title={{Masked Modeling Duo: Learning Representations by Encouraging Both Networks to Model the Input}},
+  author={Niizumi, Daisuke and Takeuchi, Daiki and Ohishi, Yasunori and Harada, Noboru and Kashino, Kunio},
+  booktitle={ICASSP 2023 - 2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
+  year={2023},
+  url={https://ieeexplore.ieee.org/document/10097236},
+  doi={10.1109/ICASSP49357.2023.10097236}}
 
 
 @inproceedings{caron2021dino,
