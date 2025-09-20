@@ -44,6 +44,10 @@ def count_parameters(model):
   return total_param
 
 
+def get_exp_annealed_rate(start, decay_rate, curr_step):
+  return start * (decay_rate ** curr_step)
+
+
 class PatchEmbed(nn.Module):
   """ 2D Image to Patch Embedding -- borrowed from https://pypi.org/project/timm/0.4.12/
   """

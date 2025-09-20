@@ -64,11 +64,17 @@ lr_scheduler:
   warmup_updates: 19654
 model:
   _name: matpac
-  use_mcl: False
+  use_mcl: True
   encoder:
     embed_dim: 768
   decoder:
     embed_dim: ${model.encoder.embed_dim}
+  mcl_heads:
+    embed_dim: ${model.encoder.embed_dim}
+    n_head: 5
+    temperature_start: 0.1
+    temperature_end: 0.001
+    decay_rate: 0.99998
   n_freq: 80 
   n_t : ${task.max_sample_size} 
   alpha : 0.5

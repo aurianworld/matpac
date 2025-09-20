@@ -3,6 +3,15 @@
 In this folder we propose an easy to install python package to use MATPAC
 at inference (or for fine-tuning) as a feature extractor from raw audio.
 
+## AVAILABLE WEIGHTS
+All model weights are available in the release of the repository.
+
+- MATPAC: matpac_10_2048.pt
+- MATPAC++, SSL on AS: matpac_plus_6s_2048_enconly.pt
+- MATPAC++, SSL on Music: matpac_plus_music_6s_2048_enconly.pt
+- MATPAC++, SSL+FT on AS, encoder only: matpac_plus_6s_2048_enconly.pt
+- MATPAC++, SSL+FT on AS, encoder+class head: matpac_plus_as_48_1_map_enc_and_head.pt
+
 ## Installation
 
 Place yourself in the folder [inference_matpac](.), then install the package

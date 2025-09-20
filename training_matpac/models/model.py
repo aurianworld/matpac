@@ -31,11 +31,17 @@ from .decoder import (
     decoder
 )
 
+from .mcl import (
+    mcl_config,
+    mcl_heads
+)
+
 from .utils import (
     PatchEmbed,
     get_annealed_rate,
     random_unstructured_mask,
-    get_2d_sincos_pos_embed
+    get_2d_sincos_pos_embed,
+    get_exp_annealed_rate
 )
 
 from .cls_head import (Cls_Head_Config, Cls_Head, Cls_Loss)
@@ -50,6 +56,9 @@ class general_config(FairseqDataclass):
   encoder: encoder_layers_config = encoder_layers_config()
 
   decoder: decoder_config = decoder_config()
+
+  use_mcl: bool = False
+  mcl_heads: mcl_config = mcl_config()
 
   ####  Pred param ###
   ## Masking ##
@@ -106,6 +115,10 @@ class GeneralModel(BaseFairseqModel):
 
     ## Student/Main Encoder  ##
     self.student_encoder = encoder_layers(cfg=cfg.encoder)
+
+    ## MCL Heads ##
+    if self.cfg.use_mcl:
+      self.mcl_heads = mcl_heads(cfg=cfg.mcl_heads)
 
     ## Decoder ##
     self.decoder = decoder(cfg=cfg.decoder,
@@ -251,8 +264,10 @@ class GeneralModel(BaseFairseqModel):
       z_m = self.forward_teacher_encoder_pred(x_m,
                                               drop_cls=False)
 
-    loss_pred, result = self.forward_loss_pred(self.drop_cls_token(z_m),
-                                               z_hat_m, result)
+      # best_head_ix is None when we do not train with MCL heads
+      loss_pred, best_head_idx, result = self.forward_loss_pred(self.drop_cls_token(z_m),
+                                                                z_hat_m,
+                                                                result)
 
     # We get the temperature tau for the teacher cls head
     teacher_temp = get_annealed_rate(
@@ -262,6 +277,19 @@ class GeneralModel(BaseFairseqModel):
         total_steps=self.cls_head_cfg.warmup_n_steps,
     )
     result["t_temp"] = teacher_temp*100
+
+    # If we are using MCL we chose the best prediction to be used in the CLS Head
+    if self.cfg.use_mcl:
+      _, _, n, D = z_hat_m.shape
+      z_hat_m = torch.gather(
+          z_hat_m,
+          dim=2,
+          index=best_head_idx.unsqueeze(-1).unsqueeze(dim=-1).repeat(1,
+                                                                     1,
+                                                                     1,
+                                                                     D))
+
+      z_hat_m = z_hat_m.squeeze(dim=2)
 
     # First we put the teacher on the right device and type
     self.teacher_to_device(z_hat_m, self.cls_teacher_head)
@@ -312,7 +340,7 @@ class GeneralModel(BaseFairseqModel):
 
   @torch.no_grad()
   def make_cls_heads(self):
-    """Create the student and teacher classification heads and set the ema 
+    """Create the student and teacher classification heads and set the ema
     between them.
     """
 
@@ -409,15 +437,46 @@ class GeneralModel(BaseFairseqModel):
     target = torch.nn.functional.normalize(target, dim=-1, p=2)
     pred = torch.nn.functional.normalize(pred, dim=-1, p=2)
 
-    result["var_z_hat_m"] = self.compute_var(pred) * 1000
-    result["var_z_m"] = self.compute_var(target) * 1000
+    if self.cfg.use_mcl:
+      loss = target.unsqueeze(dim=2) * pred
+      for i in range(self.cfg.mcl_heads.n_head):
+        n = f"var_z_hat_m_{i}"
+        result[n] = self.compute_var(pred[:, :, i, :].float()) * 1000
+      result["var_z_m"] = self.compute_var(target) * 1000
 
-    loss = target * pred
+    else:
+      loss = target * pred
+      result["var_z_hat_m"] = self.compute_var(pred) * 1000
+      result["var_z_m"] = self.compute_var(target) * 1000
+
     loss = 2 - 2 * loss.sum(dim=-1)
 
-    # loss = loss.mean()
+    if not self.cfg.use_mcl:
+      return loss, None, result
 
-    return loss, result
+    else:
+      best_head_idx = loss.min(dim=-1)[1]
+
+      temperature = get_exp_annealed_rate(start=self.cfg.mcl_heads.temperature_start,
+                                          decay_rate=self.cfg.mcl_heads.decay_rate,
+                                          curr_step=self.num_updates)
+
+      # Exponential annealed mcl
+      if temperature > self.cfg.mcl_heads.temperature_end:
+        # We put a negative sign because we want the smallest loss not the biggest
+        soft_assignation = (torch.softmax(-loss/temperature, dim=2)).detach()
+        loss_mcl_pred = soft_assignation * loss
+        loss_mcl_pred = loss_mcl_pred.sum(dim=-1)
+
+        result["mcl_temp"] = temperature * 1000
+
+      # Switching to regular mcl if temperature to low (to avoid small values)
+      else:
+        loss_mcl_pred = loss.min(dim=-1)[0]
+
+        result["mcl_temp"] = self.cfg.mcl_heads.temperature_end * 1000
+
+      return loss_mcl_pred, best_head_idx, result
 
   def forward_decoder(self, x,
                       ids_restore,
@@ -456,7 +515,11 @@ class GeneralModel(BaseFairseqModel):
     if keep_cls:
       y = torch.cat([x[:, :1, :], y], dim=1)
 
-    y = self.decoder.decoder_pred(y)
+    if self.cfg.use_mcl:
+      y, _ = self.mcl_heads(y)
+
+    else:
+      y = self.decoder.decoder_pred(y)
 
     return y
 

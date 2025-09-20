@@ -1,10 +1,24 @@
 # MATPAC: Masked latent Prediction And Classification
 
-**tl;dr**: MATPAC is a powerful general audio foundation model.
+**tl;dr**: MATPAC is a SOTA audio and music encoder trained in Self-Supervised Learning.
 
-This repository provides the training code, in the fairseq framework, as well as an easy-to-use inference code from our paper [📝 Masked Latent Prediction and Classification for Self-Supervised Audio Representation Learning](https://ieeexplore.ieee.org/document/10887666)
+This repository provides the training code, in the fairseq framework, as well as an easy-to-use inference code from our papers:
+- [📝 MATPAC: Masked Latent Prediction and Classification for Self-Supervised Audio Representation Learning](https://arxiv.org/abs/2502.12031)
+- [📝 MATPAC++: Enhanced Masked Latent Prediction for Self-Supervised Audio Representation Learning](https://arxiv.org/pdf/2508.12709)
 
-![MATPAC](./assets/MATPAC.png)
+
+<p align="center">
+  <figure>
+    <figcaption>Diagram of MATPAC: </figcaption>
+    <img src="./assets/MATPAC.png" alt="MATPAC" width="500"/>
+  </figure>
+  <figure>
+    <figcaption>Diagram of MATPAC++: </figcaption>
+    <img src="./assets/matpac++_diagram.png" alt="MATPAC++" width="700"/>
+  </figure>
+</p>
+
+
 
 ## Table of Contents
 - [MATPAC: Masked latent Prediction And Classification](#matpac-masked-latent-prediction-and-classification)
@@ -32,7 +46,7 @@ The training code is available for reproducibility [here](./training_matpac/). W
 You can find a detailed explanation on how to run the model [here](./training_matpac/README.md).
 
 ## Benchmarks
-MATPAC outperforms other self-supervised baselines on datasets such as OpenMIC, GTZAN, Magna-tag-a-tune, ESC-50 and US8K. It even outperforms supervised baselines on Magna-tag-a-tune.
+MATPAC and MATPAC++ outperforms other self-supervised baselines on datasets such as OpenMIC, GTZAN, Magna-tag-a-tune, ESC-50 and US8K. It even outperforms supervised baselines on Magna-tag-a-tune.
 
 ![Bencmarks](./assets/table_results.png)
 
@@ -48,6 +62,14 @@ If you use this work, please cite:
   year={2025},
   url={https://ieeexplore.ieee.org/document/10887666},
   doi={10.1109/ICASSP49660.2025.10887666}}
+
+@article{quelennec2025matpacenhancedmaskedlatent,
+      title={MATPAC++: Enhanced Masked Latent Prediction for Self-Supervised Audio Representation Learning}, 
+      author={Aurian Quelennec and Pierre Chouteau and Geoffroy Peeters and Slim Essid},
+      journal={arXiv preprint arXiv:2508.12709},
+      year={2025},
+      url={https://arxiv.org/abs/2508.12709}, 
+}
 ```
 
 ---
