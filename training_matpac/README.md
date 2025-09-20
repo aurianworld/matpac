@@ -1,11 +1,11 @@
-# MATPAC Training Code
+# MATPAC and MATPAC++ Training Code
 
 In this folder we find what is required by fairseq framework to train a model.
 We give the configuration file that was used to get the best model of our paper.
 
 ## Table of Contents
 
-- [MATPAC Training Code](#matpac-training-code)
+- [MATPAC and MATPAC++ Training Code](#matpac-and-matpac-training-code)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Data Preprocessing](#data-preprocessing)
@@ -55,6 +55,12 @@ python prepare_manifest.py </path/that/will/contain/the/logmel/spectrograms> --d
 
 To launch a training use this command:
 
+For MATPAC:
+```python
+python $FAIRSEQ/fairseq_cli/hydra_train.py -m --config-dir /path/to/matpac/training_matpac/config --config-name matpac common.user_dir=/path/to/matpac/training_matpac task.data=/path/to/the/manifest
+```
+
+For MATPAC++:
 ```python
 python $FAIRSEQ/fairseq_cli/hydra_train.py -m --config-dir /path/to/matpac/training_matpac/config --config-name matpac common.user_dir=/path/to/matpac/training_matpac task.data=/path/to/the/manifest
 ```
