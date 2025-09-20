@@ -32,6 +32,8 @@ class matpac_wrapper(nn.Module):
   def __init__(self,
                inference_type="precise",  # or fast
                pull_time_dimension=True,
+               as_class_head=False,
+               concat_freq=True,
                cfg: general_config = general_config(),
                ):
     super(matpac_wrapper, self).__init__()
@@ -40,6 +42,8 @@ class matpac_wrapper(nn.Module):
     self.cfg = cfg
     self.inference_type = inference_type
     self.pull_time_dimension = pull_time_dimension
+    self.as_class_head = as_class_head
+    self.concat_freq = concat_freq
 
     # Setting the nn modules
     self.patch_embed = PatchEmbed(img_size=[cfg.n_freq, cfg.n_t],
@@ -69,6 +73,10 @@ class matpac_wrapper(nn.Module):
                                      n_mels=cfg.n_freq,
                                      center=False)
 
+    if as_class_head:
+      self.head = TaskHead(dim=cfg.encoder.embed_dim,
+                           n_class=527)
+
   def preprocess(self, x):
 
     if x.ndim < 2:
@@ -97,6 +105,10 @@ class matpac_wrapper(nn.Module):
     if self.pull_time_dimension:
       emb = emb.mean(dim=1)
       layer_results = layer_results.mean(dim=2)
+
+    if self.as_class_head:
+      as_cls = torch.nn.functional.sigmoid(self.head(emb))
+      return as_cls, layer_results
 
     return emb, layer_results
 
@@ -138,11 +150,15 @@ class matpac_wrapper(nn.Module):
 
     layer_results_full = layer_results_full[..., 1:, :]
 
-    layer_results_full = rearrange(layer_results_full, 'b l (f t) d -> b l t (f d)',
-                                   f=patch_fbins, d=embed_d)
+    if self.concat_freq:
+      layer_results_full = rearrange(layer_results_full, 'b l (f t) d -> b l t (f d)',
+                                     f=patch_fbins, d=embed_d)
 
-    layer_results_full = rearrange(layer_results_full, '(b n) l t d -> b l (t n) d',
-                                   b=bs, n=n_chunk, d=embed_d*patch_fbins)
+      layer_results_full = rearrange(layer_results_full, '(b n) l t d -> b l (t n) d',
+                                     b=bs, n=n_chunk, d=embed_d*patch_fbins)
+    else:
+      layer_results_full = rearrange(layer_results_full, '(b n) l t d -> b l (t n) d',
+                                     b=bs, n=n_chunk, d=embed_d)
 
     emb = layer_results_full[:, -1]
 
@@ -181,8 +197,9 @@ class matpac_wrapper(nn.Module):
           x[..., i*unit_frames:(i+1)*unit_frames])
 
       layer_results = layer_results[..., 1:, :]
-      layer_results = rearrange(layer_results, 'b n (f t) d -> b n t (f d)',
-                                f=patch_fbins, d=embed_d)
+      if self.concat_freq:
+        layer_results = rearrange(layer_results, 'b n (f t) d -> b n t (f d)',
+                                  f=patch_fbins, d=embed_d)
       embeddings.append(layer_results)
     layer_results = torch.cat(embeddings, axis=-2)
 
@@ -226,9 +243,43 @@ class matpac_wrapper(nn.Module):
     return grid_size
 
 
+class MLP(nn.Module):
+  def __init__(self, input_size, hidden_sizes=(), output_size=527, hidden_dropout=0.5, mean=0.0, std=0.01, bias=0.):
+    super().__init__()
+    sizes = [input_size] + list(hidden_sizes) + [output_size]
+    fcs = []
+    for l, (in_size, out_size) in enumerate(zip(sizes[:-1], sizes[1:])):
+      if l > 0:
+        fcs.append(nn.Dropout(hidden_dropout))
+      linear = nn.Linear(in_size, out_size)
+      nn.init.normal_(linear.weight, mean=mean, std=std)
+      nn.init.constant_(linear.bias, bias)
+      fcs.append(linear)
+      fcs.append(nn.ReLU())
+    self.mlp = nn.Sequential(*fcs[:-1])
+
+  def forward(self, x):
+    out = self.mlp(x)
+    return out
+
+
+class TaskHead(torch.nn.Module):
+  def __init__(self, dim, n_class=1000, hidden=()):
+    super().__init__()
+    self.norm = torch.nn.BatchNorm1d(dim, affine=False)
+    self.mlp = MLP(input_size=dim, hidden_sizes=hidden,
+                   output_size=n_class, mean=0.0, std=0.01, bias=0.)
+
+  def forward(self, x):
+    x = self.norm(x.unsqueeze(-1)).squeeze(-1)
+    return self.mlp(x)
+
+
 def get_matpac(checkpoint_path,
                inference_type: str = "precise",  # or fast
-               pull_time_dimension: bool = True):
+               pull_time_dimension: bool = True,
+               concat_freq: bool = True,
+               as_class_head: bool = False):
   """Basic function to instantiate the inference model from the paper
   with the best checkpoint.
 
@@ -246,6 +297,13 @@ def get_matpac(checkpoint_path,
   pull_time_dimension : bool
       Parameter to decide if we pull the time dimension during inference or not.
       If True we take the mean of the time dimension.
+  concat_freq : bool
+      True by default, it concatenate all embeddings along freq axis, if False
+      the sequence is TxF. For AudioSet fine tuned models it is False by default.
+  as_class_head : bool
+      When loading a checkpoint of the model fine-tuned on AudioSet, set to True 
+      to output the class prediction of AudioSet, set to False to access the 
+      embeddings. 
 
 
   Returns
@@ -254,11 +312,30 @@ def get_matpac(checkpoint_path,
       _description_
   """
 
+  checkpoint = torch.load(checkpoint_path)
+
+  if "as" in checkpoint_path:
+    cfg = general_config(n_t=992)
+
+    if "head" in checkpoint_path:
+      concat_freq = False  # FALSE BY DEFAULT WHEN FT ON AS WITH HEAD
+      pull_time_dimension = True  # TRUE BY DEFAULT WHEN FT ON AS WITH HEAD
+      print("Using a CKPT finetuned on AudioSet: concat_freq=False and pull_time_dimension=True")
+
+    else:
+      as_class_head = False  # IF NO HEAD IN CHECKPOINT
+      print("Using a CKPT finetuned on AudioSet but with encoder only")
+
+  else:
+    cfg = general_config()
+    # Forcing to false to avoid errors when the model is not fine tuned on AS
+    as_class_head = False
+
   model = matpac_wrapper(inference_type=inference_type,
                          pull_time_dimension=pull_time_dimension,
-                         )
-
-  checkpoint = torch.load(checkpoint_path)
+                         as_class_head=as_class_head,
+                         concat_freq=concat_freq,
+                         cfg=cfg)
 
   # Load the model state dict from the checkpoint into the model
   model.load_state_dict(checkpoint, strict=False)
@@ -270,9 +347,31 @@ def get_matpac(checkpoint_path,
 
 if __name__ == "__main__":
 
-  model = get_matpac(checkpoint_path=ckpt_path, pull_time_dimension=False)
+  # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_as_48_1_map_enconly.pt"  # OK
+  # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_music_6s_2048_enconly.pt"  # OK
+  # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_6s_2048_enconly.pt"  # OK
+  ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_as_48_1_map_enc_and_head.pt"  # OK
 
-  audio = torch.rand((1, 160000))
+  model = get_matpac(checkpoint_path=ckpt_path,
+                     pull_time_dimension=False,
+                     inference_type="fast",
+                     as_class_head=True)
+
+  # audio = torch.rand((1, 160000))
   audio_2 = torch.rand((2, 320000))
 
-  print(model(audio))
+  emb, layer_out = model(audio_2)
+  print(emb.shape)
+  print(layer_out.shape)
+
+  model = get_matpac(checkpoint_path=ckpt_path,
+                     pull_time_dimension=False,
+                     inference_type="precise",
+                     as_class_head=True)
+
+  # audio = torch.rand((1, 160000))
+  audio_2 = torch.rand((2, 320000))
+
+  emb, layer_out = model(audio_2)
+  print(emb.shape)
+  print(layer_out.shape)
