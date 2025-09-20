@@ -56,7 +56,7 @@ python prepare_manifest.py </path/that/will/contain/the/logmel/spectrograms> --d
 To launch a training use this command:
 
 ```python
-python $FAIRSEQ/fairseq_cli/hydra_train.py -m --config-dir /path/to/matpac/training_matpac/config --config-name matpac common.user_dir /path/to/matpac/training_matpac task.data=/path/to/the/manifest
+python $FAIRSEQ/fairseq_cli/hydra_train.py -m --config-dir /path/to/matpac/training_matpac/config --config-name matpac common.user_dir=/path/to/matpac/training_matpac task.data=/path/to/the/manifest
 ```
 
 Alternatively to use a simpler command, you can overwrite in the [config file](./config/matpac.yaml):
