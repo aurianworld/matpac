@@ -22,9 +22,9 @@ class mcl_config:
   soft_assig_mcl_head: bool = False
 
   # Temperature param
-  temperature_start: float = 3
-  temperature_end: float = 0.01
-  decay_rate: float = 0.999
+  temperature_start: float = 1
+  temperature_end: float = 0.0001
+  decay_rate: float = 0.99997
 
 
 class mcl_heads(nn.Module):
