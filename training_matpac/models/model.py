@@ -264,10 +264,10 @@ class GeneralModel(BaseFairseqModel):
       z_m = self.forward_teacher_encoder_pred(x_m,
                                               drop_cls=False)
 
-      # best_head_ix is None when we do not train with MCL heads
-      loss_pred, best_head_idx, result = self.forward_loss_pred(self.drop_cls_token(z_m),
-                                                                z_hat_m,
-                                                                result)
+    # best_head_ix is None when we do not train with MCL heads
+    loss_pred, best_head_idx, result = self.forward_loss_pred(self.drop_cls_token(z_m),
+                                                              z_hat_m,
+                                                              result)
 
     # We get the temperature tau for the teacher cls head
     teacher_temp = get_annealed_rate(
