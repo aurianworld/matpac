@@ -16,11 +16,6 @@ class mcl_config:
   # if scoring
   score: bool = False
 
-  # if random head selection (for baselin)
-  random_head: bool = False
-  mean_head: bool = False
-  soft_assig_mcl_head: bool = False
-
   # Temperature param
   temperature_start: float = 1
   temperature_end: float = 0.0001
