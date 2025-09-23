@@ -516,7 +516,7 @@ class GeneralModel(BaseFairseqModel):
       y = torch.cat([x[:, :1, :], y], dim=1)
 
     if self.cfg.use_mcl:
-      y, _ = self.mcl_heads(y)
+      y = self.mcl_heads(y)
 
     else:
       y = self.decoder.decoder_pred(y)

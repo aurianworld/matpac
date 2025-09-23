@@ -13,9 +13,6 @@ class mcl_config:
   decoder_embed_dim: int = II("model.decoder.decoder_embed_dim")
   n_head: int = 5
 
-  # if scoring
-  score: bool = False
-
   # Temperature param
   temperature_start: float = 1
   temperature_end: float = 0.0001
@@ -40,12 +37,6 @@ class mcl_heads(nn.Module):
                                               cfg.embed_dim)
                                     for i in range(cfg.n_head)])
 
-    if cfg.score:
-      self.scoring_head = nn.Linear(cfg.decoder_embed_dim,
-                                    cfg.n_head)
-    else:
-      self.scoring_head = None
-
   def forward(self, x):
     """Forward the sequence from the decoder into each head and forward a 
     score for which head might be the best to use
@@ -60,16 +51,7 @@ class mcl_heads(nn.Module):
     mcl_preds : torch.Tensor [batch_size, n_heads, n_token, embed_dim]
       The prediction of each head for the reconstruction of masked patches in
       the latent space.
-    head_scores : torch.Tensor [[batch_size, n_heads]
-      The score for each head, trying to predict which head we should use for 
-      backward.
     """
-
-    if self.scoring_head is not None:
-      head_scores = self.scoring_head(x)
-      head_scores = torch.sigmoid(head_scores)
-    else:
-      head_scores = None
 
     mcl_preds = []
     for head in self.mcl_heads:
@@ -78,4 +60,4 @@ class mcl_heads(nn.Module):
 
     mcl_preds = torch.stack(mcl_preds, dim=2)
 
-    return mcl_preds, head_scores
+    return mcl_preds
