@@ -27,6 +27,7 @@ This repository provides the training code, in the fairseq framework, as well as
   - [Training code](#training-code)
   - [Benchmarks](#benchmarks)
   - [Citation](#citation)
+  - [Derived works](#derived-works)
   - [Credits](#credits)
 
 ## Inference code
@@ -71,6 +72,12 @@ If you use this work, please cite:
       url={https://arxiv.org/abs/2508.12709}, 
 }
 ```
+
+## Derived works
+
+MATPAC++ has been used as the primary audio encoder in the following works, further demonstrating its effectiveness:
+- [TinyMU](https://github.com/xiquan-li/TinyMU) - MATPAC++ serves as the audio encoder in a compact audio-language model (ALM) that achieves performance comparable to AudioFlamingo and Qwen-Audio while using only 300M parameters.
+- [S-SONDO](https://github.com/MedAliAdlouni/ssondo) - MATPAC++ is distilled into a lightweight CNN-based model that is 31× smaller while retaining 96% of the teacher model's performance.
 
 ---
 
