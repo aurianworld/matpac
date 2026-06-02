@@ -3,6 +3,10 @@ import torch.nn as nn
 import numpy as np
 from dataclasses import dataclass
 from einops import rearrange
+import pandas as pd
+import os
+import json
+from timm.models.layers import trunc_normal_
 
 from matpac.preprocess import logMelSpectrogram
 from matpac.encoder import encoder_layers_config, encoder_layers
@@ -35,6 +39,7 @@ class matpac_wrapper(nn.Module):
                as_class_head=False,
                concat_freq=True,
                cfg: general_config = general_config(),
+               probe_checkpoint_paths: str = None
                ):
     super(matpac_wrapper, self).__init__()
 
@@ -73,9 +78,91 @@ class matpac_wrapper(nn.Module):
                                      n_mels=cfg.n_freq,
                                      center=False)
 
+    base_path = os.path.dirname(__file__)
     if as_class_head:
-      self.head = TaskHead(dim=cfg.encoder.embed_dim,
-                           n_class=527)
+
+      self.head_norm = torch.nn.BatchNorm1d(
+          cfg.encoder.embed_dim, affine=False)
+      self.head = torch.nn.Linear(cfg.encoder.embed_dim, 527)
+      trunc_normal_(self.head.weight, std=2e-5)
+
+      csv_path = os.path.join(
+          base_path, "class_mappings", "audioset_mapping.csv")
+      # self.as_class_map = pd.read_csv(csv_path, index_col=None)
+      self.class_map = pd.read_csv(
+          csv_path).sort_values('mid').reset_index()
+      self.class_map = self.class_map["display_name"].to_dict()
+
+    if probe_checkpoint_paths is not None:
+
+      if "openmic" in probe_checkpoint_paths:
+        out_features = 20
+
+        json_path = os.path.join(
+            base_path, "class_mappings", "openmic_mapping.json")
+        with open(json_path, "r") as f:
+          class_idx_dict = json.load(f)  # this should be a dict
+
+        self.class_map = {v: k for k, v in class_idx_dict.items()}
+
+      elif "mtg_genre" in probe_checkpoint_paths:
+        out_features = 87
+
+        json_path = os.path.join(
+            base_path, "class_mappings", "mtg_genre_mapping.json")
+        with open(json_path, "r") as f:
+          class_idx_dict = json.load(f)  # this should be a dict
+
+        self.class_map = {v: k for k, v in class_idx_dict.items()}
+
+      elif "mtg_instrument" in probe_checkpoint_paths:
+        out_features = 40
+
+        json_path = os.path.join(
+            base_path, "class_mappings", "mtg_instrument_mapping.json")
+        with open(json_path, "r") as f:
+          class_idx_dict = json.load(f)  # this should be a dict
+
+        self.class_map = {v: k for k, v in class_idx_dict.items()}
+
+      elif "mtg_mood" in probe_checkpoint_paths:
+        out_features = 56
+
+        json_path = os.path.join(
+            base_path, "class_mappings", "mtg_mood_mapping.json")
+        with open(json_path, "r") as f:
+          class_idx_dict = json.load(f)  # this should be a dict
+
+        self.class_map = {v: k for k, v in class_idx_dict.items()}
+
+      elif "mtg_top50" in probe_checkpoint_paths:
+        out_features = 50
+
+        json_path = os.path.join(
+            base_path, "class_mappings", "mtg_top50_mapping.json")
+        with open(json_path, "r") as f:
+          class_idx_dict = json.load(f)  # this should be a dict
+
+        self.class_map = {v: k for k, v in class_idx_dict.items()}
+
+      elif "fsd50k" in probe_checkpoint_paths:
+        out_features = 200
+        csv_path = os.path.join(
+            base_path, "class_mappings", "fsd50k_mapping.csv")
+        df_class = pd.read_csv(csv_path, header=None, index_col=0)
+        self.class_map = df_class[1].to_dict()
+
+      elif "esc50" in probe_checkpoint_paths:
+        out_features = 50
+
+        json_path = os.path.join(
+            base_path, "class_mappings", "esc50_mapping.json")
+        with open(json_path, "r") as f:
+          esc50_mapping = {int(k): v for k, v in json.load(f).items()}
+
+        self.class_map = esc50_mapping
+
+      self.probe = nn.Linear(in_features=3840, out_features=out_features)
 
   def preprocess(self, x):
 
@@ -105,10 +192,6 @@ class matpac_wrapper(nn.Module):
     if self.pull_time_dimension:
       emb = emb.mean(dim=1)
       layer_results = layer_results.mean(dim=2)
-
-    if self.as_class_head:
-      as_cls = torch.nn.functional.sigmoid(self.head(emb))
-      return as_cls, layer_results
 
     return emb, layer_results
 
@@ -200,13 +283,38 @@ class matpac_wrapper(nn.Module):
       if self.concat_freq:
         layer_results = rearrange(layer_results, 'b n (f t) d -> b n t (f d)',
                                   f=patch_fbins, d=embed_d)
+
+      elif self.as_class_head:
+        layer_results = rearrange(layer_results, 'b n (f t) d -> b n t d f',
+                                  f=patch_fbins, d=embed_d).mean(-1)
+
       embeddings.append(layer_results)
     layer_results = torch.cat(embeddings, axis=-2)
 
-    layer_results = layer_results
     emb = layer_results[:, -1]
 
     return emb, layer_results
+
+  def probe_forward(self, x):
+    x = self.preprocess(x)
+    emb, layer_results = self.forward_precise(x)
+    emb = emb.mean(dim=1)
+
+    if self.as_class_head:
+      emb = self.head_norm(emb.unsqueeze(-1)).squeeze(-1)
+      probs = torch.nn.functional.softmax(self.head(emb), dim=-1)
+
+    else:
+      probs = torch.nn.functional.softmax(self.probe(emb), dim=-1)
+
+    values, index = probs.topk(k=5, dim=-1)
+    labels = [
+        [f"{self.class_map[i]} ({v:.2f})" for i,
+         v in zip(idx_row, val_row)]
+        for idx_row, val_row in zip(index.cpu().numpy(), values.cpu().numpy())
+    ]
+
+    return probs, labels
 
   def extract_features(self, x):
       # Patch Logmel Spectrogram
@@ -243,43 +351,12 @@ class matpac_wrapper(nn.Module):
     return grid_size
 
 
-class MLP(nn.Module):
-  def __init__(self, input_size, hidden_sizes=(), output_size=527, hidden_dropout=0.5, mean=0.0, std=0.01, bias=0.):
-    super().__init__()
-    sizes = [input_size] + list(hidden_sizes) + [output_size]
-    fcs = []
-    for l, (in_size, out_size) in enumerate(zip(sizes[:-1], sizes[1:])):
-      if l > 0:
-        fcs.append(nn.Dropout(hidden_dropout))
-      linear = nn.Linear(in_size, out_size)
-      nn.init.normal_(linear.weight, mean=mean, std=std)
-      nn.init.constant_(linear.bias, bias)
-      fcs.append(linear)
-      fcs.append(nn.ReLU())
-    self.mlp = nn.Sequential(*fcs[:-1])
-
-  def forward(self, x):
-    out = self.mlp(x)
-    return out
-
-
-class TaskHead(torch.nn.Module):
-  def __init__(self, dim, n_class=1000, hidden=()):
-    super().__init__()
-    self.norm = torch.nn.BatchNorm1d(dim, affine=False)
-    self.mlp = MLP(input_size=dim, hidden_sizes=hidden,
-                   output_size=n_class, mean=0.0, std=0.01, bias=0.)
-
-  def forward(self, x):
-    x = self.norm(x.unsqueeze(-1)).squeeze(-1)
-    return self.mlp(x)
-
-
 def get_matpac(checkpoint_path,
                inference_type: str = "precise",  # or fast
                pull_time_dimension: bool = True,
                concat_freq: bool = True,
-               as_class_head: bool = False):
+               as_class_head: bool = False,
+               probe_checkpoint_paths: str = None):
   """Basic function to instantiate the inference model from the paper
   with the best checkpoint.
 
@@ -304,6 +381,10 @@ def get_matpac(checkpoint_path,
       When loading a checkpoint of the model fine-tuned on AudioSet, set to True 
       to output the class prediction of AudioSet, set to False to access the 
       embeddings. 
+  probe_checkpoint_paths : str
+      Path for the weights of a probe trained on a downstream task. If it is not
+      none it will instantiate the probe with the weights to give labels when calling
+      "probe_forward".
 
 
   Returns
@@ -317,6 +398,9 @@ def get_matpac(checkpoint_path,
   if "as" in checkpoint_path:
     cfg = general_config(n_t=992)
 
+    inference_type = "precise"
+    print("Using precise inference by default with a CKPT finetuned on AudioSet")
+
     if "head" in checkpoint_path:
       concat_freq = False  # FALSE BY DEFAULT WHEN FT ON AS WITH HEAD
       pull_time_dimension = True  # TRUE BY DEFAULT WHEN FT ON AS WITH HEAD
@@ -325,6 +409,14 @@ def get_matpac(checkpoint_path,
     else:
       as_class_head = False  # IF NO HEAD IN CHECKPOINT
       print("Using a CKPT finetuned on AudioSet but with encoder only")
+
+  elif probe_checkpoint_paths is not None:
+    inference_type = "precise"
+    print("Using precise inference by default when using a downstream Probe")
+    concat_freq = True  # True BY DEFAULT WHEN USING A DOWNSTREAM PROBE
+    pull_time_dimension = True  # TRUE BY WHEN USING A DOWNSTREAM PROBE
+    print("Using a Downstream probe: concat_freq=True and pull_time_dimension=True")
+    cfg = general_config()
 
   else:
     cfg = general_config()
@@ -335,9 +427,14 @@ def get_matpac(checkpoint_path,
                          pull_time_dimension=pull_time_dimension,
                          as_class_head=as_class_head,
                          concat_freq=concat_freq,
-                         cfg=cfg)
+                         cfg=cfg,
+                         probe_checkpoint_paths=probe_checkpoint_paths)
 
   # Load the model state dict from the checkpoint into the model
+  if probe_checkpoint_paths is not None:
+    probe_checkpoint = torch.load(probe_checkpoint_paths)
+    checkpoint = {**checkpoint, **probe_checkpoint}
+
   model.load_state_dict(checkpoint, strict=False)
 
   model.eval()
@@ -347,31 +444,68 @@ def get_matpac(checkpoint_path,
 
 if __name__ == "__main__":
 
+  dataset = "fsd50k"
+
   # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_as_48_1_map_enconly.pt"  # OK
   # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_music_6s_2048_enconly.pt"  # OK
-  # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_6s_2048_enconly.pt"  # OK
-  ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_as_48_1_map_enc_and_head.pt"  # OK
+  ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_6s_2048_enconly.pt"  # OK
+  # ckpt_path = "/home/auquelennec/Bureau/ckpt/mcl_matpac/matpac_plus_as_48_1_map_enc_and_head.pt"  # OK
+
+  # model = get_matpac(checkpoint_path=ckpt_path,
+  #                    as_class_head=True)
 
   model = get_matpac(checkpoint_path=ckpt_path,
-                     pull_time_dimension=False,
-                     inference_type="fast",
-                     as_class_head=True)
+                     probe_checkpoint_paths=f"/home/auquelennec/Bureau/ckpt/Weights_probes_matpac/matpac++_general_audio/{dataset}/{dataset}.pth"
+                     #  f"/home/auquelennec/Bureau/ckpt/Weights_probes_matpac/matpac++_music/{dataset}/{dataset}.pth"
+                     )
 
-  # audio = torch.rand((1, 160000))
-  audio_2 = torch.rand((2, 320000))
+  import librosa
+  wav, _ = librosa.load(
+      # "/home/auquelennec/Bureau/audios_ds/openmic/017114_122880.ogg",
+      "/home/auquelennec/Bureau/audios_ds/esc50/1-9887-B-49.wav",
+      # "/home/auquelennec/Bureau/audios_ds/esc50/1-9887-A-49.wav",
+      # "/home/auquelennec/Bureau/0/-1nilez17Dg_30.000_40.000.wav",
+      # "/home/auquelennec/Bureau/0/0amHVSbkaX8_60.000_70.000.wav",
+      mono=True, sr=16000
+  )
+  audio_real = torch.tensor(wav).unsqueeze(0)
 
-  emb, layer_out = model(audio_2)
-  print(emb.shape)
-  print(layer_out.shape)
+  with torch.no_grad():
+    prob, labels = model.probe_forward(audio_real)
 
-  model = get_matpac(checkpoint_path=ckpt_path,
-                     pull_time_dimension=False,
-                     inference_type="precise",
-                     as_class_head=True)
+  print(prob.shape)
+  print(labels)
 
-  # audio = torch.rand((1, 160000))
-  audio_2 = torch.rand((2, 320000))
+  # model = get_matpac(checkpoint_path=ckpt_path,
+  #                    pull_time_dimension=False,
+  #                    inference_type="fast",
+  #                    as_class_head=True)
 
-  emb, layer_out = model(audio_2)
-  print(emb.shape)
-  print(layer_out.shape)
+  # # audio = torch.rand((1, 160000))
+  # audio_2 = torch.rand((2, 320000))
+
+  # emb, layer_out = model(audio_2)
+  # print(emb.shape)
+  # print(layer_out.shape)
+
+  # model = get_matpac(checkpoint_path=ckpt_path,
+  #                    pull_time_dimension=True,
+  #                    inference_type="precise",
+  #                    as_class_head=True)
+
+  # # audio = torch.rand((1, 160000))
+  # import librosa
+  # wav, _ = librosa.load(
+  #     "/home/auquelennec/Bureau/0/0arN4pk83lA_30.000_40.000.wav", mono=True, sr=16000)
+  # audio_real = torch.tensor(wav).unsqueeze(0)
+
+  # with torch.no_grad():
+  #   emb, layer_out = model(audio_real)
+
+  # probs = emb.squeeze(0)
+  # values, index = probs.topk(k=10)
+  # print(', '.join([f'{model.as_class_map[i]} ({v*100:.1f}%)' for i,
+  #       v in zip(index.numpy(), values.numpy())]))
+
+  # print(emb.shape)
+  # print(layer_out.shape)

@@ -21,11 +21,11 @@ in editable mode :
 pip install -e .
 ```
 
-## Usage 
+## Embedding extraction 
 
 Download the model [weights](https://github.com/aurianworld/matpac/releases/download/Initial_release/matpac_10_2048.pt) and save them under `ckpt_path` on your computer.
 
-### Basic Usage
+### Basic embedding extraction
 
 ```python
 import torchaudio
@@ -47,7 +47,7 @@ emb, layer_results = model(x)
 
 ```
 
-### Advanced Usage
+### Advanced embedding extraction
 
 - By default we mean pool the time dimension of the embedding, but you can keep it
 by passing this argument :
@@ -76,4 +76,49 @@ emb, layer_results = model(x)
 
 # emb : shape (bs, 3840)
 # layer_results : shape (bs, 12, 3840)
+```
+
+## Classification heads and labels prediction
+
+### AudioSet classification head
+
+```python
+
+# Instantiate the model with the AudioSet finetuning checkpoint
+# Set as_class_head to True to use the AudioSet class predictions.
+model = get_matpac(
+            checkpoint_path="matpac_plus_as_48_1_map_enc_and_head.pt",
+            as_class_head=True
+            )
+
+# Extract the probabilities and the associated labels from the audio
+prob, labels = model.probe_forward(audio_real)
+
+# prob : shape (bs, 527) is the logit vector on over the AudioSet Classes
+# labels : shape (bs, 5) give the 5 most activated AudioSet classes and their probabilities.
+
+labels -> [['Heart sounds, heartbeat (0.62)', 'Speech (0.18)', 'Heart murmur (0.14)', 'Throbbing (0.01)', 'Inside, small room (0.01)']]
+```
+
+### Downstream tasks classification heads
+
+We release the weights of all the classification heads of each downstream tasks for each pre-trained MATPAC++ model. 
+
+You can then make class predictions over any audio on the 11 downstream tasks used in the study. You can find the head's weights [here](https://github.com/aurianworld/matpac/releases/download/Probes_weights/Weights_probes_matpac.zip).
+
+```python
+
+# Instantiate the model with the pre-trained checkpoint and FSD50K classification head
+model = get_matpac(
+            checkpoint_path="matpac_plus_6s_2048_enconly.pt",
+            probe_checkpoint_paths="matpac++_general_audio/fsd50k.pth"
+            )
+
+# Extract the probabilities and the associated labels from the audio
+prob, labels = model.probe_forward(audio_real)
+
+# prob : shape (bs, n_classes) is the logit vector on over the downstream task's classes
+# labels : shape (bs, 5) give the 5 most activated AudioSet classes and their probabilities.
+
+labels -> [['Domestic_sounds_and_home_sounds (0.39)', 'Tools (0.09)', 'Sawing (0.06)', 'Glass (0.04)', 'Animal (0.04)']]
 ```
