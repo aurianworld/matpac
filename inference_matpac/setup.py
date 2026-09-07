@@ -21,7 +21,8 @@ setup(
                       "timm==0.4.12",
                       "torch==2.4.1",
                       "torchaudio==2.4.1",
-                      "torchvision==0.19.1"],
+                      "torchvision==0.19.1",
+                      "pandas==2.3.3",],
     python_requires='>=3.9.18',
     packages=find_packages(include=["matpac*"])
 )

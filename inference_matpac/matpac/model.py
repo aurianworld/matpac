@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from einops import rearrange
 import pandas as pd
 import os
@@ -17,7 +17,7 @@ from matpac.utils import PatchEmbed
 class general_config:
 
   ## Model Parameters ##
-  encoder: encoder_layers_config = encoder_layers_config()
+  encoder: encoder_layers_config = field(default_factory=encoder_layers_config)
 
   ## Logmel Spec Shape ##
   n_freq: int = 80
