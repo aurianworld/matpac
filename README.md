@@ -9,7 +9,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="Apache 2.0 license"></a>
 </p>
 
-**The models are on the 🤗 Hub** — load any of them with `transformers` in three lines,
+**The models are on the 🤗 Hub** | load any of them with `transformers` in three lines,
 no need to clone this repo: see [Models on Hugging Face](#models-on-hugging-face).
 
 This repository provides the training code, in the fairseq framework, as well as an easy-to-use inference code from our papers:
